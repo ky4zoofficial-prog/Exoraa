@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -33,7 +32,7 @@
   --font-mono:'IBM Plex Mono',monospace;
   --radius:10px;
   --radius-sm:6px;
-  --shadow-card:0 1px 2px rgba(20,27,38,0.06), 0 8px 24px -12px rgba(20,27,38,0.18);
+  --shadow-card:0 1px 2px rgba(20,27,38,0.05);
   color-scheme: light;
 }
 html[data-theme="dark"]{
@@ -54,7 +53,7 @@ html[data-theme="dark"]{
   --bad-tint:rgba(201,120,106,0.14);
   --mark:#D3A868;
   --mark-tint:rgba(211,168,104,0.15);
-  --shadow-card:0 1px 2px rgba(0,0,0,0.3), 0 12px 30px -14px rgba(0,0,0,0.6);
+  --shadow-card:0 1px 2px rgba(0,0,0,0.2);
   color-scheme: dark;
 }
 
@@ -79,10 +78,28 @@ p{margin:0;}
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size:64px 64px;
-  opacity:0.35;
+  opacity:0.16;
   mask-image:radial-gradient(ellipse 80% 60% at 30% 0%, black, transparent 75%);
 }
-html[data-theme="light"] .scrim-grid{opacity:.5;}
+html[data-theme="light"] .scrim-grid{opacity:.22;}
+
+/* ============ MOBILE TOPBAR ============ */
+.topbar{
+  display:none;
+  position:sticky;top:0;z-index:40;
+  align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--line);
+  background:var(--paper);
+}
+.topbar .mark{font-family:var(--font-display);font-size:19px;font-weight:700;}
+.menu-btn{
+  width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--line-strong);
+  background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  flex-direction:column;gap:4px;
+}
+.menu-btn span{display:block;width:16px;height:1.5px;background:var(--ink);}
+.rail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:44;}
+.rail-overlay.show{display:block;}
 
 /* ============ SHELL ============ */
 .shell{
@@ -151,6 +168,37 @@ main.stage{
 .view.active{display:block;}
 @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 
+/* ============ RESPONSIVE ============ */
+@media(max-width:920px){
+  .shell{grid-template-columns:1fr;}
+  .rail{
+    position:fixed;top:0;left:0;height:100vh;width:250px;z-index:45;
+    background:var(--paper);transform:translateX(-100%);transition:transform .25s ease;
+  }
+  .rail.open{transform:translateX(0);}
+  .topbar{display:flex;}
+}
+@media(max-width:640px){
+  main.stage{padding:20px 18px 60px;}
+  .hero h1{font-size:32px;}
+  .ledger{grid-template-columns:repeat(2,1fr);}
+  .two-col{gap:26px;}
+  .editor-head{flex-direction:column;gap:12px;}
+  .reviewer-row{grid-template-columns:1fr;}
+  .row-actions{justify-content:flex-start;}
+  .exam-main{padding:18px 20px;}
+  .exam-question{font-size:21px;}
+  .exam-side{
+    position:fixed;top:0;right:0;height:100%;width:250px;z-index:60;
+    transform:translateX(100%);transition:transform .25s ease;background:var(--paper);
+  }
+  .exam-side.open{transform:translateX(0);}
+  .exam-topbar{flex-wrap:wrap;gap:10px;}
+  .results-hero{gap:22px;}
+  .score-big{font-size:60px;}
+  #examNavToggle{display:inline-flex !important;}
+}
+
 /* ============ TYPOGRAPHY UTIL ============ */
 .eyebrow-meta{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);}
 .hairline{border:none;border-top:1px solid var(--line);margin:22px 0;}
@@ -189,7 +237,7 @@ main.stage{
 .ledger-cell .lbl{font-size:12px;color:var(--ink-soft);margin-top:4px;}
 
 .two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:36px;align-items:start;}
-@media(max-width:920px){.two-col{grid-template-columns:1fr;}.shell{grid-template-columns:1fr;}.rail{position:relative;height:auto;}}
+@media(max-width:920px){.two-col{grid-template-columns:1fr;}}
 
 .continue-card{
   border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;background:var(--surface);box-shadow:var(--shadow-card);
@@ -402,8 +450,13 @@ html[data-theme="dark"] .toast{background:var(--surface-raised);color:var(--ink)
 </head>
 <body>
 <div class="scrim-grid"></div>
+<div class="topbar">
+  <span class="mark">Examora</span>
+  <button class="menu-btn" id="menuBtn" aria-label="Open menu"><span></span><span></span><span></span></button>
+</div>
+<div class="rail-overlay" id="railOverlay"></div>
 <div class="shell">
-  <aside class="rail">
+  <aside class="rail" id="railAside">
     <div class="rail-brand">
       <span class="mark">Examora</span>
       <span class="sub">v1.0</span>
@@ -425,7 +478,10 @@ html[data-theme="dark"] .toast{background:var(--surface-raised);color:var(--ink)
   <div class="exam-main">
     <div class="exam-topbar">
       <button class="exit" id="examExit">&larr; Exit exam</button>
-      <div class="exam-timer" id="examTimer" style="display:none;">--:--</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="exam-timer" id="examTimer" style="display:none;">--:--</div>
+        <button class="btn btn-sm" id="examNavToggle" style="display:none;">Questions</button>
+      </div>
     </div>
     <div class="exam-progress-line"><div class="exam-progress-fill" id="examProgressFill"></div></div>
     <div class="exam-qmeta">
@@ -443,7 +499,7 @@ html[data-theme="dark"] .toast{background:var(--surface-raised);color:var(--ink)
       </div>
     </div>
   </div>
-  <div class="exam-side">
+  <div class="exam-side" id="examSide">
     <h4>Question navigator</h4>
     <div class="qnav-grid" id="qnavGrid"></div>
     <div class="qnav-legend">
@@ -535,6 +591,22 @@ document.getElementById('btnLight').addEventListener('click', ()=>{ state.theme=
 document.getElementById('btnDark').addEventListener('click', ()=>{ state.theme='dark'; persist(); applyTheme(); });
 
 /* ============================================================
+   MOBILE NAV DRAWER
+   ============================================================ */
+const railAside = document.getElementById('railAside');
+const railOverlay = document.getElementById('railOverlay');
+function openRail(){ railAside.classList.add('open'); railOverlay.classList.add('show'); }
+function closeRail(){ railAside.classList.remove('open'); railOverlay.classList.remove('show'); }
+document.getElementById('menuBtn').addEventListener('click', openRail);
+railOverlay.addEventListener('click', closeRail);
+
+/* Mobile toggle for the in-exam question navigator */
+const examSideEl = document.getElementById('examSide');
+document.getElementById('examNavToggle').addEventListener('click', ()=>{
+  examSideEl.classList.toggle('open');
+});
+
+/* ============================================================
    NAV / ROUTING
    ============================================================ */
 const NAV_ITEMS = [
@@ -567,6 +639,7 @@ function navigate(viewId, params){
   buildRail();
   render(viewId, params||{});
   window.scrollTo(0,0);
+  closeRail();
 }
 
 function render(viewId, params){
@@ -1188,7 +1261,10 @@ function startQuiz(reviewerId, mode){
 }
 function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-function openExamShell(){ document.getElementById('examShell').classList.remove('hidden'); }
+function openExamShell(){
+  document.getElementById('examShell').classList.remove('hidden');
+  document.getElementById('examSide').classList.remove('open');
+}
 function closeExamShell(){
   document.getElementById('examShell').classList.add('hidden');
   clearInterval(timerInterval);
@@ -1388,7 +1464,7 @@ function submitExam(){
   persist();
 
   closeExamShell();
-  navigate('results', {result:{reviewerTitle:r.title, subject:r.subject, correctCount, total, pct, timeUsed, details, topicStats}});
+  navigate('results', {result:{reviewerId:r.id, reviewerTitle:r.title, subject:r.subject, correctCount, total, pct, timeUsed, details, topicStats}});
 }
 
 /* ============================================================
@@ -1421,8 +1497,8 @@ function renderResultsView(stage, params){
   const actionsRow = el('div'); actionsRow.style.cssText='display:flex;gap:10px;margin:26px 0 32px;';
   const retryBtn = el('button','btn btn-primary','Try again');
   retryBtn.addEventListener('click', ()=>{
-    const r = state.reviewers.find(rr=>rr.title===res.reviewerTitle);
-    if(r) startQuiz(r.id, 'practice');
+    if(findReviewer(res.reviewerId)) startQuiz(res.reviewerId, 'practice');
+    else toast('This reviewer no longer exists');
   });
   const reviewBtn = el('button','btn','Review mistakes');
   reviewBtn.addEventListener('click', ()=>{
